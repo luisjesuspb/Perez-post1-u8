@@ -1,11 +1,11 @@
-; post1.asm - REP MOVSB: copia de cadena
+; post1.asm - REP MOVSW: copia optimizada de cadena
 ; Compilar: nasm -f bin post1.asm -o post1.com
 ORG 100h
 
 section .data
   origen  db "HOLA, MUNDO!",0
   destino db 13 dup(0)
-  msgCop  db "Copiado: $"
+  msgCop  db "Copiado (MOVSW): $"
   crlf    db 0Dh,0Ah,"$"
 
 section .text
@@ -14,13 +14,20 @@ start:
   mov ax, ds
   mov es, ax
 
-  ; Copiar 13 bytes de origen a destino
+  ; Copia optimizada: MOVSW para el grueso + MOVSB para byte impar
   mov si, origen
   mov di, destino
-  mov cx, 13
-  cld                 ; DF=0: de baja a alta direccion
-  rep movsb
+  mov cx, 13          ; longitud total
+  cld
 
+  mov ax, cx
+  shr cx, 1           ; CX = 13 / 2 = 6 words
+  rep movsw           ; copiar 6 words (12 bytes)
+
+  and ax, 1           ; ¿habia byte impar? (13 AND 1 = 1)
+  jz  .fin
+  movsb               ; copiar el byte sobrante (posicion 13)
+.fin:
   ; Mostrar el resultado
   mov ah, 09h
   mov dx, msgCop
